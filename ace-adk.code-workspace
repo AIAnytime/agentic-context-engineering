@@ -1,0 +1,25 @@
+{
+    "folders": [
+        {
+            "path": ".",
+            "name": "Agentic Context Engineering ADK"
+        }
+    ],
+    "settings": {
+        "[python]": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+          },
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        },
+        "[markdown]": {
+            "editor.formatOnSave": true,
+            "editor.formatOnPaste": true,
+            "editor.codeActionsOnSave": {
+              "source.fixAll.markdownlint": "explicit"
+            }
+        }
+    }
+}
