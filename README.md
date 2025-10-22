@@ -32,6 +32,42 @@ uv run main.py
 StateInitializer → Generator → Reflector → Curator → (更新された state)
 ```
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant ADKFramework as ADK Framework (UI/Orchestrator)
+    participant StateInitializer
+    participant Generator
+    participant Reflector
+    participant Curator
+    participant SessionState as Session State (Intermediate Outputs)
+    participant PlaybookState as Playbook State (app:playbook)
+
+    User->>ADKFramework: 1. クエリ送信
+    ADKFramework->>StateInitializer: 2. 実行 (ctx)
+    StateInitializer->>SessionState: 3. user_query, ground_truth=None を保存
+    StateInitializer->>PlaybookState: 4. app:playbook を初期化 (初回のみ)
+    StateInitializer-->>ADKFramework: 5. 初期化完了 (Event)
+    ADKFramework-->>User: 6. 初期化完了を表示 (Optional)
+
+    ADKFramework->>Generator: 7. 実行 (user_query from State, PlaybookState参照)
+    Generator->>SessionState: 8. generator_outputを保存
+    Generator-->>ADKFramework: 9. Generator Output (Event)
+    ADKFramework-->>User: 10. Generator Outputを表示
+
+    ADKFramework->>Reflector: 11. 実行 (generator_output, PlaybookState参照)
+    Reflector->>SessionState: 12. reflector_outputを保存
+    Reflector->>PlaybookState: 13. タグ統計更新
+    Reflector-->>ADKFramework: 14. Reflector Output (Event)
+    ADKFramework-->>User: 15. Reflector Outputを表示
+
+    ADKFramework->>Curator: 16. 実行 (reflector_output, PlaybookState参照)
+    Curator->>SessionState: 17. curator_output (DeltaBatch)を保存
+    Curator->>PlaybookState: 18. Delta適用 (Playbook更新)
+    Curator-->>ADKFramework: 19. Curator Output (Event)
+    ADKFramework-->>User: 20. Curator Output (Playbook変更内容)を表示
+```
+
 - Generator: 回答と軌跡（reasoning, bullet 参照）を生成
 - Reflector: 出力を評価し、bullet を helpful/harmful/neutral でタグ付け
 - Curator: タグと考察に基づき `app:playbook` を ADD/UPDATE/REMOVE
