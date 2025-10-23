@@ -19,14 +19,14 @@ class StateInitializer(BaseAgent):
         state_changes = {}
         state_changes["user_query"] = ctx.user_content
 
-        # 必須状態
-        # app:playbookの初期化
+        # Required state
+        # Initialize app:playbook
         if "app:playbook" not in state:
             pb = Playbook()
             state_changes["app:playbook"] = pb.to_dict()
 
-        # 🔹 ground_truth（オプション）
-        # ユーザーが提供しない場合、Noneで明示的に初期化
+        # 🔹 ground_truth (optional)
+        # If user doesn't provide, explicitly initialize with None
         if "ground_truth" not in state:
             state_changes["ground_truth"] = None
 
@@ -52,7 +52,7 @@ ace_iteration = SequentialAgent(
         reflector,
         curator,
     ],
-    description="1回のACEサイクルを実行",
+    description="Execute one ACE cycle",
 )
 
 root_agent = ace_iteration

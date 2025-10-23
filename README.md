@@ -1,35 +1,33 @@
 # ACE-ADK (Agentic Context Engineering – Agent Development Kit)
 
-![ACE Framework](./docs/images/ACE_framework.png)
+This project is a starter implementation of agents that reproduces research paper methods using Google ADK. It implements "Agentic Context Engineering" that repeats the cycle of answer generation → introspection → knowledge reflection, aiming to enable local startup and understanding of the overall picture in 5 minutes even for first-time users.
 
-本プロジェクトは、論文の手法を Google ADK を用いて再現したエージェント実装のスターターです。回答生成→内省→知見反映を繰り返す「Agentic Context Engineering」を実装し、初見でも5分でローカル起動し全体像を把握できることを目指します。
+## 1. What It Can Do (What & Why)
 
-## 1. 何ができるか（What & Why）
+- Execute one cycle of Generation (Generator) → Reflection & Tagging (Reflector) → Playbook Update (Curator)
+- Reflect learned insights into `app:playbook` to continuously improve answer quality for future interactions
+- Focus on reproducibility and maintainability with strict schema and small model operations (low cost)
 
-- 生成（Generator）→ 反省・タグ付け（Reflector）→ プレイブック更新（Curator）を1サイクルで実行
-- 学習した知見を `app:playbook` に反映し、次回以降の回答品質を継続改善
-- スキーマ厳格・小さなモデル運用（低コスト）で再現性と保守性を重視
+## 2. Quick Start (Local Minimal)
 
-## 2. クイックスタート（ローカル最小）
-
-前提: macOS（または同等環境）、Python（`.python-version` 参照）、`uv` が利用可能
+Prerequisites: macOS (or equivalent environment), Python (see `.python-version`), `uv` available
 
 ```bash
-# 依存関係インストール
+# Install dependencies
 uv sync
 
-# 起動
+# Launch
 uv run main.py
 ```
 
-期待される結果: ローカルで Web UI / API（またはCLI）が起動し、1サイクル実行の流れを試せます。
+Expected result: Web UI / API (or CLI) starts locally, allowing you to test the flow of one cycle execution.
 
-## 3. アーキテクチャ概要（要点）
+## 3. Architecture Overview (Key Points)
 
-テキスト図（内部詳細はリンク先参照）:
+Text diagram (see links for internal details):
 
 ```text
-StateInitializer → Generator → Reflector → Curator → (更新された state)
+StateInitializer → Generator → Reflector → Curator → (updated state)
 ```
 
 ```mermaid
@@ -43,67 +41,127 @@ sequenceDiagram
     participant SessionState as Session State (Intermediate Outputs)
     participant PlaybookState as Playbook State (app:playbook)
 
-    User->>ADKFramework: 1. クエリ送信
-    ADKFramework->>StateInitializer: 2. 実行 (ctx)
-    StateInitializer->>SessionState: 3. user_query, ground_truth=None を保存
-    StateInitializer->>PlaybookState: 4. app:playbook を初期化 (初回のみ)
-    StateInitializer-->>ADKFramework: 5. 初期化完了 (Event)
-    ADKFramework-->>User: 6. 初期化完了を表示 (Optional)
+    User->>ADKFramework: 1. Send query
+    ADKFramework->>StateInitializer: 2. Execute (ctx)
+    StateInitializer->>SessionState: 3. Save user_query, ground_truth=None
+    StateInitializer->>PlaybookState: 4. Initialize app:playbook (first time only)
+    StateInitializer-->>ADKFramework: 5. Initialization complete (Event)
+    ADKFramework-->>User: 6. Display initialization complete (Optional)
 
-    ADKFramework->>Generator: 7. 実行 (user_query from State, PlaybookState参照)
-    Generator->>SessionState: 8. generator_outputを保存
+    ADKFramework->>Generator: 7. Execute (user_query from State, reference PlaybookState)
+    Generator->>SessionState: 8. Save generator_output
     Generator-->>ADKFramework: 9. Generator Output (Event)
-    ADKFramework-->>User: 10. Generator Outputを表示
+    ADKFramework-->>User: 10. Display Generator Output
 
-    ADKFramework->>Reflector: 11. 実行 (generator_output, PlaybookState参照)
-    Reflector->>SessionState: 12. reflector_outputを保存
-    Reflector->>PlaybookState: 13. タグ統計更新
+    ADKFramework->>Reflector: 11. Execute (generator_output, reference PlaybookState)
+    Reflector->>SessionState: 12. Save reflector_output
+    Reflector->>PlaybookState: 13. Update tag statistics
     Reflector-->>ADKFramework: 14. Reflector Output (Event)
-    ADKFramework-->>User: 15. Reflector Outputを表示
+    ADKFramework-->>User: 15. Display Reflector Output
 
-    ADKFramework->>Curator: 16. 実行 (reflector_output, PlaybookState参照)
-    Curator->>SessionState: 17. curator_output (DeltaBatch)を保存
-    Curator->>PlaybookState: 18. Delta適用 (Playbook更新)
+    ADKFramework->>Curator: 16. Execute (reflector_output, reference PlaybookState)
+    Curator->>SessionState: 17. Save curator_output (DeltaBatch)
+    Curator->>PlaybookState: 18. Apply Delta (Playbook update)
     Curator-->>ADKFramework: 19. Curator Output (Event)
-    ADKFramework-->>User: 20. Curator Output (Playbook変更内容)を表示
+    ADKFramework-->>User: 20. Display Curator Output (Playbook changes)
 ```
 
-- Generator: 回答と軌跡（reasoning, bullet 参照）を生成
-- Reflector: 出力を評価し、bullet を helpful/harmful/neutral でタグ付け
-- Curator: タグと考察に基づき `app:playbook` を ADD/UPDATE/REMOVE
+- Generator: Generate answers and traces (reasoning, bullet references)
+- Reflector: Evaluate output and tag bullets as helpful/harmful/neutral
+- Curator: ADD/UPDATE/REMOVE `app:playbook` based on tags and considerations
 
-内部仕様・スキーマの詳細は `agents/ace_agent/README.md` を参照してください（本READMEは入口のみ）。
+## 4. Internal Architecture & Specifications
 
-## 4. プロジェクト構造（抜粋）
+### Agent Components
 
-- `main.py`: ローカル Web UI/API のエントリ
-- `config.py`: 設定
-- `pyproject.toml`: 依存とツール設定（`uv` 対応）
-- `agents/ace_agent/`: ACE エージェントの実装
-  - `agent.py`: 連携と状態初期化、`root_agent` 定義
+- **StateInitializer** (`BaseAgent`)
+  - Input: `user_content`
+  - Output: `state_delta` (`user_query`, `app:playbook` initialization, explicit `ground_truth=None`)
+- **Generator** (`Agent`)
+  - Model: `Config.generator_model`
+  - Output schema: `GeneratorOutput(reasoning: list[str], bullet_ids: list[str], final_answer: str)`
+  - State reflection: `session.state['generator_output']`
+- **Reflector** (`SequentialAgent` = `reflector_` + `tag_bullet`)
+  - Model: `Config.reflector_model`
+  - Output schema: `Reflection(...)` and `bullet_tags: list[BulletTag]`
+  - `tag_bullet` calls `Playbook.update_bullet_tag` to add tag statistics
+  - State reflection: `session.state['reflector_output']`, updated `app:playbook`
+- **Curator** (`SequentialAgent` = `curator_` + `playbook_updater`)
+  - Model: `Config.curator_model`
+  - Output schema: `DeltaBatch(reasoning, operations: DeltaOperation[])`
+  - `playbook_updater` applies `Playbook.apply_delta`
+  - State reflection: updated `app:playbook`, `session.state['curator_output']`
+
+### Execution Flow
+```text
+StateInitializer → Generator → Reflector(reflector_→tag_bullet) → Curator(curator_→playbook_updater)
+```
+
+### State Keys (session.state)
+- `user_query`: Latest user input
+- `app:playbook`: Dictionary representation of `Playbook` (includes section/ID management and tag statistics)
+- `generator_output`: `GeneratorOutput`
+- `reflector_output`: `Reflection` (includes `bullet_tags`)
+- `curator_output`: `DeltaBatch`
+- `ground_truth` (optional): Expected answer
+
+### Data Models
+- **`schemas/playbook.py`**
+  - `Bullet(id, section, content, helpful, harmful, neutral, created_at, updated_at)`
+  - `Playbook`
+    - Main operations: `add_bullet`, `update_bullet`, `remove_bullet`, `update_bullet_tag`, `apply_delta`
+    - Serialization: `to_dict`/`from_dict`/`dumps`/`loads`
+    - For prompting: `as_prompt()`, `stats()`
+- **`schemas/delta.py`**
+  - `DeltaOperation(type: "ADD"|"UPDATE"|"REMOVE", section, content?, bullet_id?)`
+  - `DeltaBatch(reasoning: str, operations: List[DeltaOperation])`
+
+## 5. Project Structure (Excerpt)
+
+- `main.py`: Entry point for local Web UI/API
+- `config.py`: Configuration
+- `pyproject.toml`: Dependencies and tool settings (`uv` compatible)
+- `agents/ace_agent/`: ACE agent implementation
+  - `agent.py`: Coordination and state initialization, `root_agent` definition
   - `sub_agents/`: `generator.py` / `reflector.py` / `curator.py`
   - `schemas/`: `playbook.py` / `delta.py`
-- `.env.example`: 環境変数の雛形
-- `refs/`: 参考リンク
+- `.env.example`: Environment variable template
+- `refs/`: Reference links
 
-詳細は次を参照: `agents/ace_agent/README.md`
+## 6. Configuration (`.env`)
 
-## 5. 設定（`.env`）
+- First, run `cp .env.example .env` and edit the necessary items.
+- This repository assumes future use of GCP/Vertex AI Agent Engine. If not configured, startup may fail.
+- Even for minimal local experience, the existence of `.env` itself is required.
 
-- 最初に `cp .env.example .env` を実行し、必要な項目を編集してください。
-- 本リポジトリは将来的な GCP/Vertex AI Agent Engine 利用を想定します。未設定の場合は起動に失敗することがあります。
-- 最小ローカル体験を目的とする場合でも、`.env` 自体の存在は必須です。
+## 7. FAQ / Troubleshooting
 
-## 6. よくある質問 / トラブルシュート
+1) Dependency resolution fails
+   - Re-run `uv sync` and resolve according to error logs.
+2) Environment variable error at startup
+   - Check if `.env` was created and if there are no typos or unset key names.
+3) Python version mismatch
+   - Refer to `.python-version`, match the environment, and retry `uv sync`.
 
-1) 依存解決に失敗する
-   - `uv sync` を再実行し、エラーログに従って解決してください。
-2) 起動時に環境変数エラー
-   - `.env` を作成したか、キー名の誤字・未設定がないか確認してください。
-3) Python バージョン不一致
-   - `.python-version` を参照し、環境を一致させた上で `uv sync` をやり直してください。
+## 8. Interaction Examples (Conceptual)
 
-## 7. 参考資料・関連ドキュメント
+1) When user sends a query, `user_query` is set, and if `app:playbook` is undefined, it's initialized
+2) `Generator` generates `GeneratorOutput` (reasoning/bullet_ids/final_answer)
+3) `Reflector` generates `Reflection` and adds tags to bullets via `tag_bullet`
+4) `Curator` returns `DeltaBatch` and `playbook_updater` applies ADD/UPDATE/REMOVE
 
-- エージェント内部仕様: `agents/ace_agent/README.md`
-- Agentic Context Engineering（参考）: `refs/Agentic Context Engineering.url`
+## 9. Customization & Extension
+
+### Easy Modifications
+- **Model switching**: Change each model name in `config.py`
+- **Collection enhancement**: Expandable to design that injects `Playbook.as_prompt()` into prompts
+- **Automatic organization**: Addition of maintenance jobs based on `Playbook.stats()` and tag statistics
+
+### Known Constraints
+- ADK dependencies and execution environment are prerequisites
+- External API authentication is minimal in this repo (expand with `.env`/environment variables as needed)
+
+## 10. Export & Integration
+
+- `agents/ace_agent/__init__.py` exposes `root_agent` (actual entity is `ace_iteration`)
+- The system can be integrated into larger applications or used as a standalone service

@@ -7,62 +7,62 @@ config = Config()
 
 
 # -------------------------
-# 1) ジェネレーター出力スキーマ
+# 1) Generator output schema
 # -------------------------
 class GeneratorOutput(BaseModel):
     reasoning: list[str] = Field(
-        description="[段階別の思考プロセス / 推論プロセス / 詳細な分析と計算] の形式で段階別推論プロセスを提供する"
+        description="Provide step-by-step reasoning process in the format of [step-by-step thought process / reasoning process / detailed analysis and calculation]"
     )
     bullet_ids: list[str] = Field(
-        default_factory=list, description="参照したプレイブックのbullet IDリスト"
+        default_factory=list, description="List of playbook bullet IDs referenced"
     )
-    final_answer: str = Field(description="簡潔な最終答")
+    final_answer: str = Field(description="Concise final answer")
 
 
 # ============================================
-# ジェネレーター：プレイブックを利用して答と軌跡を生成
+# Generator: Generate answers and traces using playbook
 # ============================================
 generator = Agent(
     name="Generator",
     model=config.generator_model,
-    description="プレイブックを参考に問題を解決し、最終答を構造化して返す。",
+    description="Solve problems by referencing the playbook and return structured final answers.",
     instruction="""
-あなたのタスクは、ユーザークエリに答えながら、段階別推論と使用したbullet IDを構造化して提供することです。
+Your task is to answer user queries while providing structured step-by-step reasoning and the bullet IDs you used.
 
-入力：
-- ユーザークエリ: {user_query}
-- 現在のPlaybook: {app:playbook}
+Input:
+- User Query: {user_query}
+- Current Playbook: {app:playbook}
 
-【必須ガイドライン】
+【Required Guidelines】
 
-1. プレイブックを注意深く読み、関連する戦略、公式、洞察を適用してください
-   - プレイブックのすべてのbullet pointを確認してください
-   - 各戦略の文脈と適用条件を理解してください
+1. Carefully read the playbook and apply relevant strategies, formulas, and insights
+   - Check all bullet points in the playbook
+   - Understand the context and application conditions of each strategy
 
-2. プレイブックにリストされた一般的な失敗（アンチパターン）を注意深く調べ、回避してください
-   - 具体的な代替案またはベストプラクティスを提示してください
+2. Carefully examine common failures (anti-patterns) listed in the playbook and avoid them
+   - Present specific alternatives or best practices
 
-3. 段階的に推論プロセスを示してください
-   - 各段階でどのbulletを参照したかを明示してください
-   - ロジックの流れが明確になるように構成してください
+3. Show the reasoning process step by step
+   - Clearly indicate which bullets you referenced at each stage
+   - Structure so that the logic flow is clear
 
-4. 分析は徹底的だが簡潔に作成してください
-   - 必須情報のみを含め、中心的な根拠はすべて含めてください
-   - 不要な繰り返しを避けてください
+4. Create thorough but concise analysis
+   - Include only essential information, but include all central evidence
+   - Avoid unnecessary repetition
 
-5. 最終答を提供する前に、計算とロジックを再検討してください
-   - すべての参照bullet_idが実際に使用されたことを確認してください
-   - ロジック上の矛盾がないか確認してください
-   - プレイブックbulletのうち関連があるものを見落としていないか再確認してください
+5. Review calculations and logic before providing the final answer
+   - Confirm that all referenced bullet_ids were actually used
+   - Check for logical contradictions
+   - Double-check that you haven't missed any relevant playbook bullets
 
-【出力ルール】
-- reasoning: 段階別の思考プロセス（step-by-step chain of thought）、詳細な分析と計算
-- bullet_ids: 参照したplaybook bullet IDのリスト
-- final_answer: 明確で検証された最終答
+【Output Rules】
+- reasoning: Step-by-step thought process (step-by-step chain of thought), detailed analysis and calculations
+- bullet_ids: List of referenced playbook bullet IDs
+- final_answer: Clear and verified final answer
 """,
-    include_contents="none",  # 状態値の注入中心
-    output_schema=GeneratorOutput,  # 出力を構造化
-    output_key="generator_output",  # session.state['generator_output']に保存
+    include_contents="none",  # Focus on state value injection
+    output_schema=GeneratorOutput,  # Structure output
+    output_key="generator_output",  # Save to session.state['generator_output']
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
 )

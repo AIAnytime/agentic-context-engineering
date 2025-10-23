@@ -13,7 +13,7 @@ config = Config()
 
 
 # -------------------------
-# 2) リフレクター出力スキーマ
+# 2) Reflector output schema
 # -------------------------
 class BulletTag(BaseModel):
     id: str = Field(description="bullet-id")
@@ -23,20 +23,20 @@ class BulletTag(BaseModel):
 
 
 class Reflection(BaseModel):
-    reasoning: str = Field(description="思考プロセスと詳細な分析および計算")
+    reasoning: str = Field(description="Thought process and detailed analysis and calculations")
     error_identification: str = Field(
-        description="推論において正確に何が間違っていたか"
+        description="What exactly was wrong in the reasoning"
     )
     root_cause_analysis: str = Field(
-        description="このエラーが発生した理由は何か？どの概念が誤解されたか？"
+        description="Why did this error occur? Which concepts were misunderstood?"
     )
-    correct_approach: str = Field(description="モデルは代わりに何をすべきだったか？")
+    correct_approach: str = Field(description="What should the model have done instead?")
     key_insight: str = Field(
-        description="このようなエラーを避けるために記憶しておくべき戦略、公式、または原則は？"
+        description="What strategy, formula, or principle should be remembered to avoid such errors?"
     )
     bullet_tags: list[BulletTag] = Field(
         default_factory=list,
-        description="bullet再タグ付け（idとhelpful/harmful/neutralタグ）",
+        description="Bullet re-tagging (id and helpful/harmful/neutral tags)",
     )
 
     @classmethod
@@ -45,48 +45,47 @@ class Reflection(BaseModel):
 
 
 # ============================================
-# リフレクター：エラー/パターンを批判的に分析
+# Reflector: Critically analyze errors/patterns
 # ============================================
 reflector_ = Agent(
     name="Reflector",
     model=config.reflector_model,
-    description="ジェネレーターの結果を批判的に評価して教訓とデルタ候補を抽出する。",
+    description="Critically analyze errors and patterns to identify improvement points.",
     instruction="""
-あなたのタスクは、ジェネレーターの産出物を入念に検討し、批判的に分析してリフレクション（JSON）を作成することです。
+Your task is to carefully examine the generator's output, critically analyze it, and create a reflection (JSON).
 
-入力：
-- ユーザークエリ: {user_query}
-- ジェネレーター結果: {generator_output}
-- ユーザーが期待した正答（ある場合）: {ground_truth}
-- ジェネレーターが参照したプレイブックbullet: {app:playbook}
+Input:
+- User query: {user_query}
+- Generator output: {generator_output}
+- Generator-referenced playbook bullet: {app:playbook}
 
-【必須分析ステップ】
+【Required Analysis Steps】
 
-1. モデルの推論軌跡を注意深く分析してエラーがどこで発生したかを把握してください
-   - ジェネレーターのreasoning全体を確認してください
-   - ロジック流で飛躍や矛盾がないか確認してください
+1. Carefully analyze the model's reasoning trace to understand where errors occurred
+   - Review the generator's entire reasoning
+   - Check for leaps or contradictions in the logic flow
 
-2. 具体的なエラータイプを識別してください：概念エラー、計算間違い、戦略の誤用など
-   - 各エラーの特性を明確に記述してください
-   - 表面的なエラーの背後にある根本原因を見つけてください
+2. Identify specific error types: conceptual errors, calculation mistakes, strategy misuse, etc.
+   - Clearly describe the characteristics of each error
+   - Find the root causes behind surface-level errors
 
-3. モデルが今後同じ失敗をしないように実行可能な洞察を提供してください
-   - 具体的な手順またはチェックリストを提示してください
-   - 汎化可能な原則を導き出してください
+3. Provide actionable insights so the model doesn't make the same mistakes in the future
+   - Present specific procedures or checklists
+   - Derive generalizable principles
 
-4. ジェネレーターが使用した各bullet pointを評価してください
-   - bullet_id別に['helpful', 'harmful', 'neutral']のいずれかをタグ付けしてください
-   - helpful：正答に役立ったbullet
-   - harmful：誤答に導いた誤ったまたは誤解させるbullet
-   - neutral：最終結果に影響を与えなかったbullet
+4. Evaluate each bullet point used by the generator
+   - Tag each bullet_id as ['helpful', 'harmful', 'neutral']
+   - helpful: bullets that helped with the correct answer
+   - harmful: incorrect or misleading bullets that led to wrong answers
+   - neutral: bullets that didn't affect the final result
 
-【出力ルール】
-- reasoning：上記4つの分析ステップをすべて経た思考プロセス、詳細な分析と根拠
-- error_identification：推論において正確に何が間違っていたかを具体的に記述
-- root_cause_analysis：このエラーが発生した根本原因は？どの概念が誤解されたか？どの戦略が誤用されたか？
-- correct_approach：ジェネレーターは代わりに何をすべきだったか？正確なステップとロジックを提示
-- key_insight：このようなエラーを避けるために記憶しておくべき戦略、公式、原則、またはチェックリスト
-- bullet_tags：ジェネレーターが参照した各bulletのタグ付け結果（idと'helpful'/'harmful'/'neutral'を含む）
+【Output Rules】
+- reasoning: Thought process that went through all 4 analysis steps above, detailed analysis and evidence
+- error_identification: Specifically describe what exactly was wrong in the reasoning
+- root_cause_analysis: What was the root cause of this error? Which concepts were misunderstood? Which strategies were misused?
+- correct_approach: What should the generator have done instead? Present accurate steps and logic
+- key_insight: Strategy, formula, principle, or checklist that should be remembered to avoid such errors
+- bullet_tags: Tagging results for each bullet referenced by the generator (including id and 'helpful'/'harmful'/'neutral')
 """,
     include_contents="none",
     output_schema=Reflection,
@@ -120,7 +119,7 @@ class TagBullet(BaseAgent):
         state_changes = {"app:playbook": playbook.to_dict()}
         pretty = "\n".join(tag_lines) or "(no changes)"
         content = UserContent(
-            parts=[Part(text=f"[Reflector] Bulletのタグ付け結果:\n{pretty}")]
+            parts=[Part(text=f"[Reflector] Bullet Tagging Results:\n{pretty}")]
         )
         yield Event(
             author=self.name,
@@ -130,10 +129,10 @@ class TagBullet(BaseAgent):
         )
 
 
-tag_bullet = TagBullet(name="tag_bullet", description="Bulletをタグ付けします。")
+tag_bullet = TagBullet(name="tag_bullet", description="Tags bullets.")
 
 reflector = SequentialAgent(
     name="Reflector",
-    description="ReflectorとTagBulletを順次実行します。",
+    description="Execute Reflector and TagBullet sequentially.",
     sub_agents=[reflector_, tag_bullet],
 )

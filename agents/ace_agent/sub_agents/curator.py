@@ -11,50 +11,55 @@ from config import Config
 config = Config()
 
 # ============================================
-# キュレーター：プレイブックをキュレーションする専門家
+# Curator: Expert in curating playbooks
 # ============================================
 curator_ = Agent(
     name="Curator",
     model=config.curator_model,
-    description="プレイブックをキュレーションする専門家です。",
-    instruction="""あなたはプレイブックをキュレーションする専門家です。
+    description="Expert in curating playbooks.",
+    instruction="""You are an expert in curating playbooks.
 
-既存のプレイブックと以前の試みの考察（reflection）を検討して：
-- 現在のプレイブックに**不足している**新しい洞察、戦略、失敗のみを識別してください
-- **既存のbulletをより良い内容に改善**したり、**エラー/重複した項目を削除**できます
-- 重複を避けてください - 類似したアドバイスが既に存在する場合、既存のプレイブックを完璧に補完する新しい内容のみを追加してください
-- プレイブック全体を再生成しないでください - 必要な追加/修正/削除項目のみを提供してください
-- 量より質に集中してください - 集中して整理されたプレイブックが包括的なものより優れています
-- 各変更は具体的で正当化される必要があります
+Considering the existing playbook and reflections from previous attempts:
+- Identify only new insights, strategies, and failures that are **missing** from the current playbook
+- You can **improve existing bullets with better content** or **remove erroneous/duplicate items**
+- Avoid duplication - if similar advice already exists, add only new content that perfectly complements the existing playbook
+- Do not regenerate the entire playbook - provide only necessary additions/modifications/deletions
+- Focus on quality over quantity - a focused and organized playbook is better than a comprehensive one
+- Each change must be specific and justified
 
-入力：
-- ユーザークエリ: {user_query}
-- Reflectorの結果: {reflector_output}
-- 現在のPlaybook: {app:playbook}
+Input:
+- User Query: {user_query}
+- Reflector Results: {reflector_output}
+- Current Playbook: {app:playbook}
 
-レスポンスは次の形式の純粋なJSONオブジェクトで記述してください：
+CRITICAL: You must respond with ONLY valid JSON. No markdown, no explanations, no code blocks.
+
+Response format (maximum 3 operations per response):
 {
-  "reasoning": "変更が必要な理由についての簡単な説明",
+  "reasoning": "Brief explanation (max 200 characters)",
   "operations": [
     {
       "type": "ADD",
       "section": "general",
-      "content": "追加する具体的で実行可能なアドバイス"
+      "content": "Specific actionable advice (max 150 characters)"
     },
     {
-      "type": "UPDATE",
-      "bullet_id": "strategy-00001",
-      "content": "既存のbulletをこのように改善された内容に修正します"
+      "type": "UPDATE", 
+      "bullet_id": "existing-id",
+      "content": "Improved content (max 150 characters)"
     },
     {
       "type": "REMOVE",
-      "bullet_id": "mistakes-00002"
+      "bullet_id": "id-to-remove"
     }
   ]
 }
 
-新しい変更がない場合、operationsフィールドに空配列を返してください。
-""",
+Rules:
+- Maximum 3 operations per response
+- Keep content concise and actionable
+- Ensure all JSON strings are properly escaped
+- If no changes needed, return: {"reasoning": "No changes needed", "operations": []}""",
     include_contents="none",
     output_schema=DeltaBatch,
     output_key="curator_output",
@@ -77,7 +82,7 @@ class PlaybookUpdater(BaseAgent):
 
         state_changes = {"app:playbook": playbook.to_dict()}
 
-        # 이벤트 방출(표시용 텍스트)
+        # Emit event (display text)
         ops = delta_batch.operations
         op_lines = []
         for op in ops:
@@ -88,7 +93,7 @@ class PlaybookUpdater(BaseAgent):
             )
         pretty = "\n".join(op_lines) or "(no changes)"
         content = UserContent(
-            parts=[Part(text=f"[Curator] プレイブック変更内容:\n{pretty}")]
+            parts=[Part(text=f"[Curator] Playbook Changes:\n{pretty}")]
         )
         yield Event(
             author=self.name,
@@ -99,12 +104,12 @@ class PlaybookUpdater(BaseAgent):
 
 
 playbook_updater = PlaybookUpdater(
-    name="playbook_updater", description="プレイブックを更新します。"
+    name="playbook_updater", description="Updates the playbook."
 )
 
 
 curator = SequentialAgent(
     name="Curator",
-    description="CuratorとPlaybookUpdaterを順次実行します。",
+    description="Execute Curator and PlaybookUpdater sequentially.",
     sub_agents=[curator_, playbook_updater],
 )
